@@ -70,10 +70,7 @@ sf::Vector2f BHgravitate(float fa, sf::VertexArray* blackHoles, sf::Vector2f &po
 			float force = fa / d;
 			sf::Vector2f direction = directionCalculator(position, (*blackHoles)[i].position, screenWidth, screenHeight);
 
-			if (d > 49400)
-				velocity += direction * force;
-			else
-				velocity -= direction * (force + 100);
+			velocity += direction * force;
 		}
 	}
 	return velocity;

@@ -14,26 +14,26 @@
 #include <sstream>
 #include "process.h"
 
-const int blackHoleCount = 6;
-const int particleCount = 100000;
-const int batchSizes = particleCount/2;
+const unsigned int blackHoleCount = 4;
+const unsigned int particleCount = 600'000;
+const unsigned int batchSizes = particleCount/8;
 
-const int defcol = 35;
+const unsigned int defcol = 10;
 
-const int screen_width = 1340;
-const int screen_height = 700;
+constexpr unsigned int screen_width = 1920;
+constexpr unsigned int screen_height = 1080;
 
-int borderWidth = 1340 / scale.x;
-int borderHeight = 700 / scale.y;
+const sf::Vector2f scale(0.01, 0.01);
 
-float fa1 = 10000;
-int fa2 = 200;
-float cosmicSpeedLimit = 900;
+const unsigned int borderWidth = screen_width / scale.x;
+const unsigned int borderHeight = screen_height / scale.y;
+
+float fa1 = 200000;
+constexpr unsigned int fa2 = 20;
+float cosmicSpeedLimit = 190000;
 
 bool paused = false;
 bool draw = true;
-
-sf::Vector2f scale(0.01, 0.01);
 
 
 int randint(int start, int end) {
@@ -78,8 +78,18 @@ void run_sim(sf::RenderWindow& window,
 
 	sf::Clock clock;
 
+	sf::RenderStates states;
 	sf::Transform transform;
 	transform.scale(scale);
+
+	states.transform = transform;
+	states.blendMode = sf::BlendAdd;
+
+	window.setFramerateLimit(99999);
+	window.setVerticalSyncEnabled(false);
+	window.resetGLStates();
+
+	sf::Clock fps_display_clock = sf::Clock::Clock();
 	
 	while (window.isOpen()) {
 
@@ -148,7 +158,7 @@ void run_sim(sf::RenderWindow& window,
 		}
 
 		if (draw == true) {
-			window.draw(*stars, (sf::BlendAdd, transform));
+			window.draw(*stars, states);
 			window.draw(*blackHoles, transform);
 		}
 		
