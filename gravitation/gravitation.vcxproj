@@ -153,7 +153,6 @@
     <ClCompile Include="src\main.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="process.h" />
     <ClInclude Include="src\random.h" />
     <ClInclude Include="src\settings.h" />
     <ClInclude Include="src\simulation.h" />

@@ -9,10 +9,13 @@ struct SFMLSettings
 
 	inline static const sf::Vector2f simulation_scale = { 0.01f, 0.01f };
 
-	inline static const auto border_width = static_cast<float>(screen_width / simulation_scale.x);
-	inline static const auto border_height = static_cast<float>(screen_height / simulation_scale.y);
+	inline static const auto border_width = screen_width / simulation_scale.x;
+	inline static const auto border_height = screen_height / simulation_scale.y;
 	inline static sf::FloatRect bounds = { 0, 0, border_width, border_height };
 
+	inline static const std::string title = "Galaxy Simulation";
+	inline static constexpr bool v_sync = false;
+	inline static constexpr unsigned max_fps = 120u;
 };
 
 
@@ -36,4 +39,9 @@ struct SimulationSettings
 
 	inline static float gravitational_constant = 20'000;
 	inline static constexpr unsigned int fa2 = 20;
+
+
+
+	inline static constexpr float initial_star_velocity = 50;
+	inline static constexpr float initial_bh_velocity = 15;
 };

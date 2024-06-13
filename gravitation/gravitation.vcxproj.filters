@@ -20,9 +20,6 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="process.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="src\random.h">
       <Filter>Header Files</Filter>
     </ClInclude>
