@@ -1,8 +1,6 @@
 #pragma once
 
 #include <SFML/Graphics.hpp>
-#include "../process.h"
-
 #include <thread>
 
 #include <string>
@@ -11,6 +9,20 @@
 #include "settings.h"
 
 #include "random.h"
+
+struct BlackHole
+{
+	sf::Vector2f position;
+	sf::Vector2f velocity;
+	sf::Vector2f acceleration;
+
+	void update(const float dt)
+	{
+		velocity += acceleration * dt;
+		position += velocity * dt;
+		acceleration = sf::Vector2f(0, 0);
+	}
+};
 
 class Simulation : SimulationSettings, SFMLSettings
 {
@@ -24,8 +36,8 @@ private:
 	sf::VertexArray stars_ = sf::VertexArray(sf::Points, number_of_stars);
 	std::vector<sf::Vector2f> star_velocities_ = std::vector<sf::Vector2f>(number_of_stars);
 
-	sf::VertexArray black_holes_ = sf::VertexArray(sf::Points, number_of_black_holes);
-	std::vector<sf::Vector2f> black_hole_velocities_ = std::vector<sf::Vector2f>(number_of_black_holes);
+	std::vector<BlackHole> black_holes_;
+	sf::CircleShape black_hole_renderer_;
 
 	sf::RenderStates states_{};
 	sf::Transform transform_{};
@@ -39,25 +51,29 @@ public:
 		window_.setVerticalSyncEnabled(v_sync);
 		window_.resetGLStates();
 
-		transform_.scale(simulation_scale);
+		transform_.scale(sf::Vector2f(simulation_scale, simulation_scale));
 		states_.transform = transform_;
 		states_.blendMode = sf::BlendAdd;
 
 
+		// initializing the black holes
+		black_hole_renderer_.setFillColor(black_hole_color);
+		black_hole_renderer_.setRadius(black_hole_radius);
+
+		black_holes_.resize(number_of_black_holes);
+		for (size_t i = 0; i < number_of_black_holes; i++)
+		{
+			black_holes_[i].position = Random::rand_pos_in_rect(bounds);
+			black_holes_[i].velocity = Random::rand_vector(-initial_bh_velocity, initial_bh_velocity);
+		}
+
 		// initializing the stars
 		for (size_t i = 0; i < star_velocities_.size(); i++)
 		{
-			stars_[i].position = Random::rand_pos_in_rect(bounds);
-			stars_[i].color = sf::Color(star_color, star_color, star_color);
+			const sf::Vector2f parent_pos = black_holes_[i % number_of_black_holes].position;
+			stars_[i].position = Random::rand_pos_in_circle<float>(parent_pos, star_spawn_radius);
+			stars_[i].color = star_color;
 			star_velocities_[i] = Random::rand_vector(-initial_star_velocity, initial_star_velocity);
-		}
-
-		// initializing the black holes
-		for (size_t i = 0; i < black_hole_velocities_.size(); i++) 
-		{
-			black_holes_[i].position = Random::rand_pos_in_rect(bounds);
-			black_holes_[i].color = sf::Color(255, 20, 255);
-			black_hole_velocities_[i] = Random::rand_vector(-initial_bh_velocity, initial_bh_velocity);
 		}
 	}
 
@@ -104,11 +120,11 @@ private:
 			sf::Vertex& point = stars_[i];
 			sf::Vector2f& vel = star_velocities_[i];
 
-			gravitate(stars_[i], vel);
+			gravitate_star(i);
 			speed_limit(vel);
 			border(point.position);
 
-			point.position += vel;
+			point.position += vel * dt;
 		}
 	}
 
@@ -137,11 +153,11 @@ private:
 	{
 		for (size_t i = 0; i < number_of_black_holes; i++)
 		{
-			BHgravitate(black_holes_[i].position, black_hole_velocities_[i]);
-			speed_limit(black_hole_velocities_[i]);
+			gravitate_bh(black_holes_[i]);
+			speed_limit(black_holes_[i].velocity);
 
+			black_holes_[i].update(dt);
 			border(black_holes_[i].position);
-			black_holes_[i].position += black_hole_velocities_[i];
 		}
 
 	}
@@ -153,7 +169,12 @@ private:
 			window_.clear();
 
 			window_.draw(stars_, states_);
-			window_.draw(black_holes_, transform_);
+
+			for (BlackHole& black_hole : black_holes_)
+			{
+				black_hole_renderer_.setPosition(black_hole.position - sf::Vector2f(black_hole_radius, black_hole_radius));
+				window_.draw(black_hole_renderer_, states_);
+			}
 
 			window_.display();
 		}
@@ -187,7 +208,7 @@ private:
 			position.x -= bounds.left + bounds.width;
 
 		else if (position.x < bounds.left)
-			position.x += bounds.left + bounds.height;
+			position.x += bounds.left + bounds.width;
 
 		if (position.y < bounds.top)
 			position.y += bounds.top + bounds.height;
@@ -197,36 +218,36 @@ private:
 	}
 
 
-	sf::Vector2f gravitate(const sf::Vertex& point, sf::Vector2f& velocity)
+	void gravitate_star(const unsigned star_index)
 	{
-		const size_t black_hole_count = black_holes_.getVertexCount();
-		for (size_t i = 0; i < black_hole_count; i++)
+		const sf::Vector2f& position = stars_[star_index].position;
+		sf::Vector2f& velocity = star_velocities_[star_index];
+
+		for (size_t i = 0; i < number_of_black_holes; i++)
 		{
 			const sf::Vector2f black_hole_center = black_holes_[i].position;
-			const float wrapped_dist_sq = wrapped_distance_squared(point.position, black_hole_center);
+			const float wrapped_dist_sq = wrapped_distance_squared(position, black_hole_center);
 			const float force = gravitational_constant * (1 / wrapped_dist_sq);
-			sf::Vector2f direction = direction_calculator(point.position, black_hole_center);
+			sf::Vector2f direction = direction_calculator(position, black_hole_center);
 			velocity += (direction * force);
 		}
-		return velocity;
 	}
 
 
-	sf::Vector2f BHgravitate(const sf::Vector2f& position, sf::Vector2f& velocity)
+	void gravitate_bh(BlackHole& black_hole) const
 	{
 
 		for (size_t i = 0; i < number_of_black_holes; i++) 
 		{
-			if (black_holes_[i].position != position) 
+			if (black_holes_[i].position != black_hole.position)
 			{
-				const float d = wrapped_distance_squared(position, black_holes_[i].position);
+				const float d = wrapped_distance_squared(black_hole.position, black_holes_[i].position);
 				const float force = gravitational_constant / d;
-				sf::Vector2f direction = direction_calculator(position, black_holes_[i].position);
+				sf::Vector2f direction = direction_calculator(black_hole.position, black_holes_[i].position);
 
-				velocity += direction * force;
+				black_hole.acceleration += direction * force;
 			}
 		}
-		return velocity;
 	}
 
 	static double wrapped_distance_squared(const sf::Vector2f position1, const sf::Vector2f position2)
@@ -276,6 +297,3 @@ private:
 		return { result_x, result_y };
 	}
 };
-
-
-

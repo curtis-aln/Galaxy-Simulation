@@ -7,10 +7,10 @@ struct SFMLSettings
 	inline static constexpr unsigned int screen_width = 1920;
 	inline static constexpr unsigned int screen_height = 1080;
 
-	inline static const sf::Vector2f simulation_scale = { 0.01f, 0.01f };
+	inline static const float simulation_scale = 0.002f;
 
-	inline static const auto border_width = screen_width / simulation_scale.x;
-	inline static const auto border_height = screen_height / simulation_scale.y;
+	inline static const auto border_width = screen_width / simulation_scale;
+	inline static const auto border_height = screen_height / simulation_scale;
 	inline static sf::FloatRect bounds = { 0, 0, border_width, border_height };
 
 	inline static const std::string title = "Galaxy Simulation";
@@ -26,7 +26,7 @@ struct SimulationSettings
 
 	inline static constexpr float cosmic_speed_limit = 20000.f;
 
-	inline static constexpr float dt = 0.008f;
+	inline static constexpr float dt = 1.f;
 
 	// Multi-threading settings
 	inline static constexpr unsigned threads = 8u;
@@ -34,14 +34,17 @@ struct SimulationSettings
 
 
 	// Graphical Settings
-	inline static constexpr unsigned star_color = 30;
+	inline static const sf::Color star_color = { 255, 255, 255 };
 
 
 	inline static float gravitational_constant = 20'000;
-	inline static constexpr unsigned int fa2 = 20;
 
 
+	inline static constexpr float initial_star_velocity = cosmic_speed_limit / 50;
+	inline static constexpr float initial_bh_velocity = 50;
 
-	inline static constexpr float initial_star_velocity = 50;
-	inline static constexpr float initial_bh_velocity = 15;
+	inline static const sf::Color black_hole_color = { 255, 20, 255 };
+	inline static constexpr float black_hole_radius = 100.f;
+
+	inline static constexpr float star_spawn_radius = 20'000.f;
 };
