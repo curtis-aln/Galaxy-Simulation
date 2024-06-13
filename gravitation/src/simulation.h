@@ -55,8 +55,13 @@ public:
 		states_.transform = transform_;
 		states_.blendMode = sf::BlendAdd;
 
+		init_black_holes();
+		init_stars();
+	}
 
-		// initializing the black holes
+
+	void init_black_holes()
+	{
 		black_hole_renderer_.setFillColor(black_hole_color);
 		black_hole_renderer_.setRadius(black_hole_radius);
 
@@ -66,16 +71,31 @@ public:
 			black_holes_[i].position = Random::rand_pos_in_rect(bounds);
 			black_holes_[i].velocity = Random::rand_vector(-initial_bh_velocity, initial_bh_velocity);
 		}
+	}
 
-		// initializing the stars
+
+	void init_stars()
+	{
 		for (size_t i = 0; i < star_velocities_.size(); i++)
 		{
 			const sf::Vector2f parent_pos = black_holes_[i % number_of_black_holes].position;
 			stars_[i].position = Random::rand_pos_in_circle<float>(parent_pos, star_spawn_radius);
 			stars_[i].color = star_color;
-			star_velocities_[i] = Random::rand_vector(-initial_star_velocity, initial_star_velocity);
+
+			// The star will initially start by going in the direction perpendicular to the black hole
+			const sf::Vector2f direction_to = parent_pos - stars_[i].position;
+			const float length = std::sqrt(direction_to.x * direction_to.x + direction_to.y * direction_to.y);
+			const sf::Vector2f direction_norm = direction_to / length;
+
+			const sf::Vector2f perp = { direction_norm.y, -direction_norm.x };
+
+			const float speed_percent = 1; // percent of the cosmic speed limit
+			const float speed = (cosmic_speed_limit / 100.f) * speed_percent;
+
+			star_velocities_[i] = perp * speed;
 		}
 	}
+
 
 	void run()
 	{
@@ -105,6 +125,11 @@ private:
 
 				else if (event.key.code == sf::Keyboard::D)
 					draw_ = not draw_;
+
+				else if (event.key.code == sf::Keyboard::Escape)
+				{
+					window_.close();
+				}
 			}
 		}
 	}
