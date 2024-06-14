@@ -10,6 +10,36 @@
 
 #include "random.h"
 
+inline float wrapped_distance_squared(const sf::Vector2f position1, const sf::Vector2f position2, const sf::FloatRect bounds)
+{
+	float dx = abs(position2.x - position1.x);
+	float dy = abs(position2.y - position1.y);
+
+	if (dx > bounds.width / 2)
+		dx = bounds.width - dx;
+	if (dy > bounds.height / 2)
+		dy = bounds.height - dy;
+
+	return dx * dx + dy * dy;
+}
+
+inline float distance(const sf::Vector2f p1, const sf::Vector2f p2, const sf::FloatRect bounds)
+{
+	return sqrt(wrapped_distance_squared(p1, p2, bounds));
+}
+
+inline sf::Vector2f normalize(const sf::Vector2f vec)
+{
+	const float length = sqrt(vec.x * vec.x + vec.y * vec.y);
+	return vec / length;
+}
+
+inline sf::Vector2f perpendicular(const sf::Vector2f vec)
+{
+	return { vec.y, -vec.x };
+}
+
+
 struct BlackHole
 {
 	sf::Vector2f position;
@@ -24,11 +54,14 @@ struct BlackHole
 	}
 };
 
+
 class Simulation : SimulationSettings, SFMLSettings
 {
 private:
 	bool paused_ = false;
 	bool draw_ = true;
+
+	unsigned frames = 0;
 
 	sf::RenderWindow window_{};
 	sf::Clock clock_{};
@@ -83,14 +116,12 @@ public:
 			stars_[i].color = star_color;
 
 			// The star will initially start by going in the direction perpendicular to the black hole
-			const sf::Vector2f direction_to = parent_pos - stars_[i].position;
-			const float length = std::sqrt(direction_to.x * direction_to.x + direction_to.y * direction_to.y);
-			const sf::Vector2f direction_norm = direction_to / length;
+			const float dist = distance(parent_pos, stars_[i].position, bounds);
 
-			const sf::Vector2f perp = { direction_norm.y, -direction_norm.x };
+			const sf::Vector2f norm = direction_calculator(parent_pos, stars_[i].position) / dist;
+			const sf::Vector2f perp = perpendicular(norm);
 
-			const float speed_percent = 1; // percent of the cosmic speed limit
-			const float speed = (cosmic_speed_limit / 100.f) * speed_percent;
+			const float speed = sqrt((G * bh_mass) / dist) * 100;
 
 			star_velocities_[i] = perp * speed;
 		}
@@ -101,9 +132,12 @@ public:
 	{
 		while (window_.isOpen())
 		{
+			++frames;
 			handle_events();
 			update_stars();
+
 			update_black_holes();
+			
 			render();
 		}
 	}
@@ -142,14 +176,15 @@ private:
 
 		for (size_t i = begin_index; i < end_index; ++i) 
 		{
-			sf::Vertex& point = stars_[i];
+			sf::Vector2f& position = stars_[i].position;
 			sf::Vector2f& vel = star_velocities_[i];
 
-			gravitate_star(i);
+			gravitate(position, vel, star_mass);
 			speed_limit(vel);
-			border(point.position);
+			border(position);
 
-			point.position += vel * dt;
+			position += vel * dt;
+			vel *= 0.999f;
 		}
 	}
 
@@ -176,13 +211,13 @@ private:
 
 	void update_black_holes()
 	{
-		for (size_t i = 0; i < number_of_black_holes; i++)
+		for (BlackHole& black_hole : black_holes_)
 		{
-			gravitate_bh(black_holes_[i]);
-			speed_limit(black_holes_[i].velocity);
+			gravitate(black_hole.position, black_hole.velocity, bh_mass, G/5);
+			speed_limit(black_hole.velocity, cosmic_speed_limit / 10);
 
-			black_holes_[i].update(dt);
-			border(black_holes_[i].position);
+			black_hole.update(dt);
+			border(black_hole.position);
 		}
 
 	}
@@ -205,24 +240,24 @@ private:
 		}
 
 		// FPS management
-		const sf::Int32 milliseconds_per_frame = clock_.restart().asMilliseconds();
+		const auto fps = static_cast< sf::Int32>(1.f / clock_.restart().asSeconds());
 
 		std::ostringstream oss;
-		oss << title << milliseconds_per_frame << " ms/f";
+		oss << title << fps << " fps";
 		const std::string var = oss.str();
 		window_.setTitle(var);
 	}
 
 
-	static void speed_limit(sf::Vector2f& velocity)
+	static void speed_limit(sf::Vector2f& velocity, const float max_speed = cosmic_speed_limit)
 	{
 		const float speed_sq = velocity.x * velocity.x + velocity.y * velocity.y;
 
-		if (speed_sq > cosmic_speed_limit * cosmic_speed_limit)
+		if (speed_sq > max_speed * max_speed)
 		{
 			const float speed = sqrt(speed_sq);
 			const sf::Vector2f norm_vel = velocity / speed;
-			velocity = norm_vel * cosmic_speed_limit;
+			velocity = norm_vel * max_speed;
 		}
 	}
 
@@ -243,49 +278,29 @@ private:
 	}
 
 
-	void gravitate_star(const unsigned star_index)
-	{
-		const sf::Vector2f& position = stars_[star_index].position;
-		sf::Vector2f& velocity = star_velocities_[star_index];
 
+	void gravitate(const sf::Vector2f& position, sf::Vector2f& velocity, const float mass, const float grav_const=G)
+	{
 		for (size_t i = 0; i < number_of_black_holes; i++)
 		{
-			const sf::Vector2f black_hole_center = black_holes_[i].position;
-			const float wrapped_dist_sq = wrapped_distance_squared(position, black_hole_center);
-			const float force = gravitational_constant * (1 / wrapped_dist_sq);
-			sf::Vector2f direction = direction_calculator(position, black_hole_center);
-			velocity += (direction * force);
-		}
-	}
-
-
-	void gravitate_bh(BlackHole& black_hole) const
-	{
-
-		for (size_t i = 0; i < number_of_black_holes; i++) 
-		{
-			if (black_holes_[i].position != black_hole.position)
+			const sf::Vector2f bh_position = black_holes_[i].position;
+			if (bh_position != position)
 			{
-				const float d = wrapped_distance_squared(black_hole.position, black_holes_[i].position);
-				const float force = gravitational_constant / d;
-				sf::Vector2f direction = direction_calculator(black_hole.position, black_holes_[i].position);
+				const float distance_sq = wrapped_distance_squared(position, bh_position, bounds);
 
-				black_hole.acceleration += direction * force;
+				if (distance_sq < black_hole_radius * black_hole_radius * 2)
+				{
+					velocity *= 1.01f;
+					continue;
+				}
+
+				const float mass_product = mass * bh_mass;
+				const float force = grav_const * (mass_product / distance_sq);
+				sf::Vector2f direction = direction_calculator(position, bh_position);
+
+				velocity += direction * force * dt;
 			}
 		}
-	}
-
-	static double wrapped_distance_squared(const sf::Vector2f position1, const sf::Vector2f position2)
-	{
-		float dx = abs(position2.x - position1.x);
-		float dy = abs(position2.y - position1.y);
-
-		if (dx > bounds.width / 2)
-			dx = bounds.width - dx;
-		if (dy > bounds.height / 2)
-			dy = bounds.height - dy;
-
-		return dx * dx + dy * dy;
 	}
 
 
