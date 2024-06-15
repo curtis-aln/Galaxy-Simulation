@@ -24,7 +24,7 @@ struct SimulationSettings
 	// initialization
 	inline static constexpr float initial_bh_velocity = 50;
 
-	inline static constexpr float star_spawn_radius = 50'000.f;
+	inline static constexpr float star_spawn_radius = 40'000.f;
 
 	inline static constexpr unsigned number_of_black_holes = 2u;
 	inline static constexpr unsigned number_of_stars = 600'000u;

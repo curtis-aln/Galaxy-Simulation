@@ -10,6 +10,7 @@
 
 #include "random.h"
 #include "toroidal_space.h"
+#include <iostream>
 
 inline sf::Vector2f normalize(const sf::Vector2f vec)
 {
@@ -104,7 +105,7 @@ public:
 			const sf::Vector2f norm = toroidal_direction(parent_pos, stars_[i].position, bounds) / dist;
 			const sf::Vector2f perp = perpendicular(norm);
 
-			const float speed = sqrt((G * bh_mass) / dist);
+			const float speed = sqrt(dist);
 
 			star_velocities_[i] = perp * speed;
 		}
@@ -167,7 +168,7 @@ private:
 			border(position);
 
 			position += vel * dt;
-			vel *= 0.999f;
+			vel *= 0.9999f;
 		}
 	}
 
@@ -262,7 +263,7 @@ private:
 
 
 
-	void gravitate(const sf::Vector2f& position, sf::Vector2f& velocity, const float mass, const float grav_const=G)
+	void gravitate(const sf::Vector2f& position, sf::Vector2f& velocity, const float mass, const float grav_const=G) const
 	{
 		for (size_t i = 0; i < number_of_black_holes; i++)
 		{
