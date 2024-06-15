@@ -26,13 +26,13 @@ struct SimulationSettings
 
 	inline static constexpr float star_spawn_radius = 50'000.f;
 
-	inline static constexpr unsigned number_of_black_holes = 8u;
-	inline static constexpr unsigned number_of_stars = 60'000u;
+	inline static constexpr unsigned number_of_black_holes = 2u;
+	inline static constexpr unsigned number_of_stars = 600'000u;
 
 
 	// Physics settings
 	inline static float G = 20000;
-	inline static constexpr float cosmic_speed_limit = 20000.f;
+	inline static constexpr float cosmic_speed_limit = 100'000.f;
 	inline static constexpr float dt = 1.5f;
 
 	inline static constexpr float star_mass = 1;

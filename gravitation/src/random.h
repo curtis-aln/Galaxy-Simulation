@@ -70,7 +70,7 @@ struct Random
 		{
 			const sf::Vector2<Type> pos = rand_pos_in_rect(rect);
 
-			// calculating distance squares
+			// calculating toroidal_distance squares
 			const sf::Vector2<Type> delta = pos - center;
 			const float dist_sq = delta.x * delta.x + delta.y * delta.y;
 

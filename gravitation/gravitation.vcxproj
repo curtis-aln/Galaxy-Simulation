@@ -156,6 +156,7 @@
     <ClInclude Include="src\random.h" />
     <ClInclude Include="src\settings.h" />
     <ClInclude Include="src\simulation.h" />
+    <ClInclude Include="src\toroidal_space.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

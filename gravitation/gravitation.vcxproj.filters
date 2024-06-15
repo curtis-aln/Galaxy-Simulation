@@ -29,5 +29,8 @@
     <ClInclude Include="src\simulation.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\toroidal_space.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

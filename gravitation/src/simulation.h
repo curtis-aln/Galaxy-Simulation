@@ -9,24 +9,7 @@
 #include "settings.h"
 
 #include "random.h"
-
-inline float wrapped_distance_squared(const sf::Vector2f position1, const sf::Vector2f position2, const sf::FloatRect bounds)
-{
-	float dx = abs(position2.x - position1.x);
-	float dy = abs(position2.y - position1.y);
-
-	if (dx > bounds.width / 2)
-		dx = bounds.width - dx;
-	if (dy > bounds.height / 2)
-		dy = bounds.height - dy;
-
-	return dx * dx + dy * dy;
-}
-
-inline float distance(const sf::Vector2f p1, const sf::Vector2f p2, const sf::FloatRect bounds)
-{
-	return sqrt(wrapped_distance_squared(p1, p2, bounds));
-}
+#include "toroidal_space.h"
 
 inline sf::Vector2f normalize(const sf::Vector2f vec)
 {
@@ -116,12 +99,12 @@ public:
 			stars_[i].color = star_color;
 
 			// The star will initially start by going in the direction perpendicular to the black hole
-			const float dist = distance(parent_pos, stars_[i].position, bounds);
+			const float dist = toroidal_distance(parent_pos, stars_[i].position, bounds);
 
-			const sf::Vector2f norm = direction_calculator(parent_pos, stars_[i].position) / dist;
+			const sf::Vector2f norm = toroidal_direction(parent_pos, stars_[i].position, bounds) / dist;
 			const sf::Vector2f perp = perpendicular(norm);
 
-			const float speed = sqrt((G * bh_mass) / dist) * 100;
+			const float speed = sqrt((G * bh_mass) / dist);
 
 			star_velocities_[i] = perp * speed;
 		}
@@ -286,7 +269,7 @@ private:
 			const sf::Vector2f bh_position = black_holes_[i].position;
 			if (bh_position != position)
 			{
-				const float distance_sq = wrapped_distance_squared(position, bh_position, bounds);
+				const float distance_sq = toroidal_distance_sq(position, bh_position, bounds);
 
 				if (distance_sq < black_hole_radius * black_hole_radius * 2)
 				{
@@ -296,44 +279,10 @@ private:
 
 				const float mass_product = mass * bh_mass;
 				const float force = grav_const * (mass_product / distance_sq);
-				sf::Vector2f direction = direction_calculator(position, bh_position);
+				sf::Vector2f direction = toroidal_direction(position, bh_position, bounds);
 
 				velocity += direction * force * dt;
 			}
 		}
-	}
-
-
-	static sf::Vector2f direction_calculator(const sf::Vector2f position1, const sf::Vector2f position2)
-	{
-		const float start_x = position1.x;
-		const float start_y = position1.y;
-		const float end_x = position2.x;
-		const float end_y = position2.y;
-
-		const float dist_x = abs(start_x - end_x);
-		const float dist_y = abs(start_y - end_y);
-
-		float result_x = 0.0f;
-		if (dist_x < bounds.width / 2)
-			result_x = dist_x;
-		else
-			result_x = dist_x - bounds.width;
-
-		if (start_x > end_x)
-			result_x *= -1;
-
-
-
-		float result_y = 0.f;
-		if (dist_y < bounds.height / 2)
-			result_y = dist_y;
-		else
-			result_y = dist_y - bounds.height;
-
-		if (start_y > end_y)
-			result_y *= -1;
-
-		return { result_x, result_y };
 	}
 };
